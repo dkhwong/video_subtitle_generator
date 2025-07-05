@@ -22,7 +22,6 @@ pretrained_models/
 *.ass
 *.TextGrid
 *.txt
-.vscode/
 mfa_model/
 *.zip
 mfa_data/
