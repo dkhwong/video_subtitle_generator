@@ -6,7 +6,7 @@ This script converts a TextGrid file from Montreal Forced Aligner to an ASS subt
 specifically formatted for karaoke videos with phrases that last approximately 5 seconds each.
 
 Usage:
-    python textgrid_to_ass.py input.TextGrid output.ass [--tier TIER] [--style STYLE] [--phrase-marker MARKER] [--target-duration SECONDS]
+    python textgrid_to_ass.py input.TextGrid output.ass [--tier TIER] [--style STYLE] [--phrase-marker MARKER] [--target-duration SECONDS] [--charset CHARSET]
 
 Arguments:
     input.TextGrid    : Path to the input TextGrid file
@@ -15,6 +15,7 @@ Arguments:
     --style           : The style name to use in the ASS file (default: "Default")
     --phrase-marker   : Marker that indicates phrase boundaries (default: "<eps>")
     --target-duration : Target duration for each subtitle line in seconds (default: 5.0)
+    --charset         : unicode or ascii
 """
 
 import re
@@ -152,7 +153,7 @@ def group_into_phrases(intervals: List[Tuple[float, float, str]], phrase_marker:
     
     return phrases
 
-def create_karaoke_line(words: List[Tuple[float, float, str, bool]]) -> str:
+def create_karaoke_line(words: List[Tuple[float, float, str, bool]], charset: str = "unicode") -> str:
     """
     Create a karaoke line with timing tags for each word.
     When a word had a phrase marker in the original text, insert a visual space before it.
@@ -175,15 +176,16 @@ def create_karaoke_line(words: List[Tuple[float, float, str, bool]]) -> str:
         
         # Add karaoke tag with duration
         # engilsh needs a space and chinese doesn't
-        result += f"{{\\K{duration_cs}}}{text} "
-        
-        #Chinese
-        #result += f"{{\\K{duration_cs}}}{text}""
+        if(charset!="unicode"):
+            result += f"{{\\K{duration_cs}}}{text} "
+        else:
+            #Chinese
+            result += f"{{\\K{duration_cs}}}{text}"
     
     return result
 
-def create_ass_file(intervals: List[Tuple[float, float, str]], output_file: str, style_name: str = "Default", 
-                   phrase_marker: str = "<eps>", min_phrase_gap: float = 2.0, target_duration: float = 5.0, shift_time: float = 0.0):
+def create_ass_file(intervals: List[Tuple[float, float, str]], output_file: str, style_name: str = "Default",
+                   phrase_marker: str = "<eps>", min_phrase_gap: float = 2.0, target_duration: float = 5.0, shift_time: float = 0.0, charset: str = "unicode"):
     """
     Create an ASS subtitle file with karaoke timing tags.
     
@@ -232,7 +234,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         end_time = format_time(end)
         
         # Create karaoke line with timing tags
-        karaoke_text = create_karaoke_line(words)
+        karaoke_text = create_karaoke_line(words,charset)
         
         # Shift effect tag to start with consideration to time shift
         karaoke_text = f"{{\\K{int(shift_time * -100)}}}{karaoke_text}"
@@ -249,6 +251,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert TextGrid file to ASS subtitle file for karaoke')
     parser.add_argument('input', help='Input TextGrid file')
     parser.add_argument('output', help='Output ASS file')
+    parser.add_argument('--charset', help='Determine whether space is added between each word (default: "unicode")')
     parser.add_argument('--tier', default='words', help='TextGrid tier to extract (default: "words")')
     parser.add_argument('--style', default='Default', help='Style name in ASS file (default: "Default")')
     parser.add_argument('--phrase-marker', default='<eps>', help='Marker that indicates phrase boundaries (default: "<eps>")')
@@ -277,7 +280,8 @@ def main():
         args.phrase_marker, 
         args.min_phrase_gap,
         args.target_duration,
-        args.shift_time
+        args.shift_time,
+        args.charset
     )
     print(f'Successfully converted "{args.input}" to "{args.output}" using tier "{args.tier}"')
     print(f'Phrases are grouped with "{args.phrase_marker}" markers with a minimum gap of {args.min_phrase_gap}s')
